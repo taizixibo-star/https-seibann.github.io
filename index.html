@@ -1,0 +1,1089 @@
+
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#f6f8fb">
+  <title>車両管理アプリ</title>
+  <link rel="manifest" href="manifest.json">
+  <link href="https://cdn.jsdelivr.net/npm/@tabler/icons@latest/tabler-icons.min.css" rel="stylesheet">
+  <script>
+    if('serviceWorker' in navigator && location.protocol !== 'file:') {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(error => console.warn('Service Worker registration failed:', error));
+      });
+    }
+  </script>
+  <style>
+:root{
+  --font-sans: "Noto Sans JP", "Yu Gothic UI", "Yu Gothic", "Hiragino Kaku Gothic ProN", "Meiryo", system-ui, sans-serif;
+  --color-background-primary:#ffffff;
+  --color-background-secondary:#f5f7fb;
+  --color-background-tertiary:#eef2f7;
+  --color-border-secondary:#d7deea;
+  --color-border-tertiary:#e4e9f1;
+  --color-text-primary:#122033;
+  --color-text-secondary:#5f6b7c;
+  --border-radius-md:12px;
+  --border-radius-lg:18px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{min-height:100%}
+body{
+  font-family:var(--font-sans);
+  background:linear-gradient(180deg,#f6f8fb 0%,#edf1f6 100%);
+  color:var(--color-text-primary);
+  padding:24px;
+}
+.sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.app{
+  display:flex;
+  min-height:620px;
+  max-width:1280px;
+  margin:0 auto;
+  background:#ffffff;
+  border-radius:20px;
+  overflow:hidden;
+  border:1px solid rgba(214,222,233,.9);
+  box-shadow:0 12px 32px rgba(18,32,51,.08);
+}
+.sidebar{
+  width:220px;
+  background:#fbfcfe;
+  border-right:1px solid var(--color-border-tertiary);
+  display:flex;
+  flex-direction:column;
+  flex-shrink:0;
+}
+.sidebar-logo{
+  padding:18px 18px 16px;
+  font-size:15px;
+  font-weight:700;
+  color:var(--color-text-primary);
+  border-bottom:1px solid var(--color-border-tertiary);
+  display:flex;
+  align-items:center;
+  gap:10px;
+  letter-spacing:.02em;
+}
+.sidebar-logo i{color:#294d7a;font-size:20px}
+.nav-item{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:6px 10px 0;
+  padding:11px 12px;
+  font-size:13px;
+  color:var(--color-text-secondary);
+  cursor:pointer;
+  border-radius:14px;
+  transition:background .15s ease,color .15s ease,transform .15s ease;
+}
+.nav-item:hover{background:var(--color-background-secondary);transform:translateX(1px)}
+.nav-item.active{background:#edf3f8;color:#294d7a;font-weight:700}
+.nav-item i{font-size:17px}
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.topbar{
+  padding:16px 22px;
+  background:#ffffff;
+  border-bottom:1px solid var(--color-border-tertiary);
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+}
+.topbar-title{font-size:16px;font-weight:700;color:var(--color-text-primary);letter-spacing:.01em}
+.topbar-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 14px;
+  font-size:13px;
+  border:1px solid var(--color-border-secondary);
+  border-radius:12px;
+  background:var(--color-background-primary);
+  color:var(--color-text-primary);
+  cursor:pointer;
+  white-space:nowrap;
+  transition:transform .15s ease,background .15s ease,border-color .15s ease,box-shadow .15s ease;
+}
+.btn:hover{background:var(--color-background-secondary);transform:translateY(-1px)}
+.btn-primary{background:#2f5f8f;color:#fff;border-color:#2f5f8f;box-shadow:none}
+.btn-primary:hover{background:#244c73;border-color:#244c73}
+.btn-compact{padding:6px 10px;font-size:12px;border-radius:10px}
+.row-actions{display:inline-flex;align-items:center;gap:6px;flex-wrap:wrap}
+.inline-link-btn{border:none;background:transparent;padding:0;color:#185FA5;font:inherit;font-weight:700;cursor:pointer;text-align:left}
+.inline-link-btn:hover{text-decoration:underline}
+.content{
+  flex:1;
+  overflow-y:auto;
+  padding:20px 22px 24px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+  background:#f7f9fc;
+}
+.stats-row{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.stat-card{
+  background:#ffffff;
+  border:1px solid var(--color-border-tertiary);
+  border-radius:16px;
+  padding:15px 16px;
+  box-shadow:none;
+}
+.stat-label{font-size:11px;letter-spacing:.04em;text-transform:uppercase;color:var(--color-text-secondary);margin-bottom:6px}
+.stat-val{font-size:28px;font-weight:700;line-height:1.1;color:var(--color-text-primary)}
+.stat-sub{font-size:11px;margin-top:4px}
+.section-head{display:flex;align-items:center;justify-content:space-between}
+.section-title{font-size:13px;font-weight:700;color:var(--color-text-secondary);letter-spacing:.02em}
+.vehicle-table{
+  background:var(--color-background-primary);
+  border:1px solid var(--color-border-tertiary);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:none;
+}
+table{width:100%;border-collapse:collapse;table-layout:fixed}
+th{
+  font-size:11px;
+  color:var(--color-text-secondary);
+  font-weight:700;
+  padding:11px 14px;
+  text-align:left;
+  background:#f3f6fa;
+  border-bottom:1px solid var(--color-border-tertiary);
+  letter-spacing:.04em;
+}
+td{font-size:13px;color:var(--color-text-primary);padding:11px 14px;border-bottom:1px solid var(--color-border-tertiary);vertical-align:middle;line-height:1.45}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:#f8fafc}
+.badge{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  padding:4px 10px;
+  border-radius:999px;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.02em;
+}
+.b-in{background:#edf5e7;color:#46691f}
+.b-out{background:#f7efe2;color:#78541a}
+.b-maint{background:#f7e7e7;color:#993737}
+.b-ok{background:#e8f4ee;color:#185d49}
+.b-warn{background:#f7efe2;color:#78541a}
+.b-ng{background:#f7e7e7;color:#993737}
+.insp-dot{width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px}
+.dot-ok{background:#1D9E75}
+.dot-warn{background:#EF9F27}
+.dot-ng{background:#E24B4A}
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(13,20,33,.45);z-index:100;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(3px)}
+.modal-overlay.open{display:flex}
+.modal{background:var(--color-background-primary);border-radius:18px;border:1px solid rgba(222,228,237,.95);width:440px;max-width:100%;box-shadow:0 18px 44px rgba(18,32,51,.16);overflow:hidden}
+.modal-head{padding:16px 20px;border-bottom:1px solid var(--color-border-tertiary);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.modal-head h3{font-size:15px;font-weight:700}
+.modal-body{padding:20px;display:flex;flex-direction:column;gap:14px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group label{font-size:11px;color:var(--color-text-secondary);font-weight:700;letter-spacing:.03em}
+.form-group input,.form-group select{
+  padding:9px 11px;
+  font-size:13px;
+  border:1px solid var(--color-border-secondary);
+  border-radius:12px;
+  background:var(--color-background-primary);
+  color:var(--color-text-primary);
+}
+.form-group input:focus,.form-group select:focus,.btn:focus{outline:2px solid rgba(24,95,165,.2);outline-offset:2px}
+.modal-foot{padding:12px 20px;border-top:1px solid var(--color-border-tertiary);display:flex;justify-content:space-between;gap:8px;background:#fbfcfe}
+.modal-foot-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+.page{display:none}
+.page.active{display:flex;flex-direction:column;gap:16px}
+.io-cols{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.io-col{
+  background:var(--color-background-primary);
+  border:1px solid var(--color-border-tertiary);
+  border-radius:16px;
+  overflow:hidden;
+  box-shadow:none;
+}
+.io-col-head{padding:11px 14px;font-size:13px;font-weight:700;border-bottom:1px solid var(--color-border-tertiary);display:flex;align-items:center;gap:6px;background:#f7f9fc}
+.io-col-head i{font-size:16px}
+.io-head-in{color:#3B6D11}
+.io-head-out{color:#854F0B}
+.io-item{padding:11px 14px;border-bottom:1px solid var(--color-border-tertiary);font-size:12px;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.io-item:last-child{border-bottom:none}
+.io-item-name{font-weight:700;color:var(--color-text-primary)}
+.io-item-time{color:var(--color-text-secondary);font-size:11px;margin-top:2px}
+.insp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:12px}
+.insp-card{background:var(--color-background-primary);border:1px solid var(--color-border-tertiary);border-radius:16px;padding:14px 14px 13px;box-shadow:none}
+.insp-card-top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+.insp-card-num{font-size:13px;font-weight:700;color:var(--color-text-primary);line-height:1.35}
+.insp-card-body{font-size:12px;color:var(--color-text-secondary);display:flex;flex-direction:column;gap:6px}
+.insp-row{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.insp-row span:last-child{color:var(--color-text-primary);font-weight:700}
+.progress-bar-wrap{height:5px;background:#edf1f6;border-radius:999px;margin-top:8px;overflow:hidden}
+.progress-bar{height:5px;border-radius:999px}
+.dashboard-vehicle-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px}
+.dashboard-vehicle-card{background:var(--color-background-primary);border:1px solid var(--color-border-tertiary);border-radius:16px;padding:14px;display:flex;flex-direction:column;gap:10px;box-shadow:none}
+.dashboard-vehicle-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.dashboard-vehicle-title{display:flex;flex-direction:column;gap:4px;min-width:0}
+.dashboard-vehicle-title button{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
+.dashboard-vehicle-meta{font-size:11px;color:var(--color-text-secondary);line-height:1.4}
+.dashboard-vehicle-body{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 10px;font-size:12px}
+.dashboard-vehicle-body span{display:block}
+.dashboard-vehicle-label{color:var(--color-text-secondary);font-size:11px;margin-bottom:2px}
+.dashboard-vehicle-value{color:var(--color-text-primary);font-weight:700}
+.dashboard-vehicle-actions{display:flex;gap:8px;flex-wrap:wrap}
+@media (max-width: 1100px){
+  .app{min-height:auto}
+  .stats-row{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .io-cols{grid-template-columns:1fr}
+}
+@media (max-width: 820px){
+  body{padding:12px}
+  .app{flex-direction:column;border-radius:20px}
+  .sidebar{width:100%;border-right:none;border-bottom:1px solid var(--color-border-tertiary)}
+  .nav-item{margin:4px 10px}
+  .content{padding:16px}
+  .stats-row{grid-template-columns:1fr}
+  .form-row{grid-template-columns:1fr}
+  .topbar{padding:14px 16px;flex-direction:column;align-items:flex-start}
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-logo"><i class="ti ti-truck" aria-hidden="true"></i>車両管理</div>
+    <div class="nav-item active" onclick="showPage('dash',this)"><i class="ti ti-layout-dashboard" aria-hidden="true"></i>ダッシュボード</div>
+    <div class="nav-item" onclick="showPage('vehicles',this)"><i class="ti ti-car" aria-hidden="true"></i>車両一覧</div>
+    <div class="nav-item" onclick="showPage('io',this)"><i class="ti ti-arrow-autofit-width" aria-hidden="true"></i>入出庫管理</div>
+    <div class="nav-item" onclick="showPage('inspection',this)"><i class="ti ti-clipboard-check" aria-hidden="true"></i>点検管理</div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-title" id="page-title">ダッシュボード</div>
+      <div class="topbar-actions">
+        <button class="btn" onclick="openVehicleModal('create')"><i class="ti ti-plus" aria-hidden="true"></i>車両登録</button>
+      </div>
+    </div>
+
+    <div class="content">
+
+      <!-- ダッシュボード -->
+      <div class="page active" id="page-dash">
+        <div class="stats-row">
+          <div class="stat-card">
+            <div class="stat-label">総車両数</div>
+            <div class="stat-val">14</div>
+            <div class="stat-sub" style="color:#185FA5">全台登録済み</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">入庫中</div>
+            <div class="stat-val" style="color:#3B6D11">9</div>
+            <div class="stat-sub" style="color:#3B6D11">稼働可能</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">出庫中</div>
+            <div class="stat-val" style="color:#854F0B">3</div>
+            <div class="stat-sub" style="color:#854F0B">運行中</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-label">整備中</div>
+            <div class="stat-val" style="color:#A32D2D">2</div>
+            <div class="stat-sub" style="color:#A32D2D">点検・修理</div>
+          </div>
+        </div>
+        <div class="section-head"><span class="section-title">点検期限が近い車両</span></div>
+        <div class="vehicle-table">
+          <table>
+            <colgroup><col style="width:22%"><col style="width:20%"><col style="width:20%"><col style="width:18%"><col style="width:20%"></colgroup>
+            <thead><tr><th>車両番号</th><th>車種</th><th>次回点検日</th><th>残り日数</th><th>ステータス</th></tr></thead>
+            <tbody>
+              <tr><td><strong>大阪 100 あ 1234</strong></td><td>トヨタ ハイエース</td><td>2026/06/20</td><td><span style="color:#A32D2D;font-weight:500">6日後</span></td><td><span class="badge b-warn"><span class="insp-dot dot-warn"></span>要確認</span></td></tr>
+              <tr><td><strong>神戸 200 い 5678</strong></td><td>日産 キャラバン</td><td>2026/06/25</td><td><span style="color:#854F0B;font-weight:500">11日後</span></td><td><span class="badge b-warn"><span class="insp-dot dot-warn"></span>要確認</span></td></tr>
+              <tr><td><strong>姫路 300 う 9012</strong></td><td>ホンダ ステップワゴン</td><td>2026/07/10</td><td><span style="color:#3B6D11">26日後</span></td><td><span class="badge b-ok"><span class="insp-dot dot-ok"></span>正常</span></td></tr>
+              <tr><td><strong>神戸 400 え 3456</strong></td><td>マツダ ボンゴ</td><td>2026/07/20</td><td><span style="color:#3B6D11">36日後</span></td><td><span class="badge b-ok"><span class="insp-dot dot-ok"></span>正常</span></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="section-head"><span class="section-title">本日の入出庫（直近）</span></div>
+        <div class="io-cols">
+          <div class="io-col">
+            <div class="io-col-head io-head-in"><i class="ti ti-login" aria-hidden="true"></i>入庫</div>
+            <div class="io-item"><div><div class="io-item-name">大阪 100 あ 1234</div><div class="io-item-time">08:32 — 田中 運転手</div></div><span class="badge b-in">入庫</span></div>
+            <div class="io-item"><div><div class="io-item-name">姫路 300 う 9012</div><div class="io-item-time">09:15 — 山本 運転手</div></div><span class="badge b-in">入庫</span></div>
+            <div class="io-item"><div><div class="io-item-name">神戸 500 お 7890</div><div class="io-item-time">11:02 — 中村 運転手</div></div><span class="badge b-in">入庫</span></div>
+          </div>
+          <div class="io-col">
+            <div class="io-col-head io-head-out"><i class="ti ti-logout" aria-hidden="true"></i>出庫</div>
+            <div class="io-item"><div><div class="io-item-name">神戸 200 い 5678</div><div class="io-item-time">07:45 — 鈴木 運転手</div></div><span class="badge b-out">出庫</span></div>
+            <div class="io-item"><div><div class="io-item-name">神戸 400 え 3456</div><div class="io-item-time">10:30 — 佐藤 運転手</div></div><span class="badge b-out">出庫</span></div>
+            <div class="io-item"><div><div class="io-item-name">姫路 600 か 1234</div><div class="io-item-time">12:00 — 伊藤 運転手</div></div><span class="badge b-out">出庫</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 車両一覧 -->
+      <div class="page" id="page-vehicles">
+        <div class="vehicle-table">
+          <table>
+            <colgroup><col style="width:22%"><col style="width:20%"><col style="width:14%"><col style="width:14%"><col style="width:15%"><col style="width:15%"></colgroup>
+            <thead><tr><th>車両番号</th><th>車種</th><th>年式</th><th>走行距離</th><th>状態</th><th>次回点検</th></tr></thead>
+            <tbody id="vehicle-tbody">
+              <tr><td><strong>大阪 100 あ 1234</strong></td><td>トヨタ ハイエース</td><td>2019年</td><td>82,400 km</td><td><span class="badge b-in">入庫中</span></td><td><span style="color:#A32D2D;font-weight:500">06/20</span></td></tr>
+              <tr><td><strong>神戸 200 い 5678</strong></td><td>日産 キャラバン</td><td>2020年</td><td>61,200 km</td><td><span class="badge b-out">出庫中</span></td><td><span style="color:#854F0B;font-weight:500">06/25</span></td></tr>
+              <tr><td><strong>姫路 300 う 9012</strong></td><td>ホンダ ステップワゴン</td><td>2021年</td><td>43,100 km</td><td><span class="badge b-in">入庫中</span></td><td>07/10</td></tr>
+              <tr><td><strong>神戸 400 え 3456</strong></td><td>マツダ ボンゴ</td><td>2018年</td><td>99,800 km</td><td><span class="badge b-out">出庫中</span></td><td>07/20</td></tr>
+              <tr><td><strong>姫路 600 か 1234</strong></td><td>トヨタ プロボックス</td><td>2022年</td><td>28,500 km</td><td><span class="badge b-out">出庫中</span></td><td>08/05</td></tr>
+              <tr><td><strong>大阪 700 き 5678</strong></td><td>スズキ エブリイ</td><td>2020年</td><td>55,300 km</td><td><span class="badge b-in">入庫中</span></td><td>08/12</td></tr>
+              <tr><td><strong>神戸 800 く 9012</strong></td><td>ダイハツ ハイゼット</td><td>2021年</td><td>39,700 km</td><td><span class="badge b-in">入庫中</span></td><td>08/20</td></tr>
+              <tr><td><strong>姫路 900 け 3456</strong></td><td>トヨタ タウンエース</td><td>2019年</td><td>77,600 km</td><td><span class="badge b-maint">整備中</span></td><td><span class="badge b-ng">期限超過</span></td></tr>
+              <tr><td><strong>大阪 101 こ 7890</strong></td><td>日産 NV200</td><td>2022年</td><td>21,400 km</td><td><span class="badge b-in">入庫中</span></td><td>09/01</td></tr>
+              <tr><td><strong>神戸 102 さ 1234</strong></td><td>ホンダ N-VAN</td><td>2023年</td><td>12,900 km</td><td><span class="badge b-in">入庫中</span></td><td>09/15</td></tr>
+              <tr><td><strong>姫路 103 し 5678</strong></td><td>スバル サンバー</td><td>2020年</td><td>48,200 km</td><td><span class="badge b-in">入庫中</span></td><td>09/22</td></tr>
+              <tr><td><strong>大阪 104 す 9012</strong></td><td>マツダ スクラム</td><td>2021年</td><td>33,600 km</td><td><span class="badge b-in">入庫中</span></td><td>10/01</td></tr>
+              <tr><td><strong>神戸 105 せ 3456</strong></td><td>トヨタ ライトエース</td><td>2018年</td><td>108,000 km</td><td><span class="badge b-maint">整備中</span></td><td>10/10</td></tr>
+              <tr><td><strong>姫路 106 そ 7890</strong></td><td>日産 クリッパー</td><td>2022年</td><td>19,800 km</td><td><span class="badge b-in">入庫中</span></td><td>10/20</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 入出庫管理 -->
+      <div class="page" id="page-io">
+        <div class="io-cols">
+          <div class="io-col">
+            <div class="io-col-head io-head-in"><i class="ti ti-login" aria-hidden="true"></i>入庫記録</div>
+            <div class="io-item"><div><div class="io-item-name">大阪 100 あ 1234</div><div class="io-item-time">今日 08:32 / 田中 / 走行 120km</div></div><span class="badge b-in">入庫</span></div>
+            <div class="io-item"><div><div class="io-item-name">姫路 300 う 9012</div><div class="io-item-time">今日 09:15 / 山本 / 走行 95km</div></div><span class="badge b-in">入庫</span></div>
+            <div class="io-item"><div><div class="io-item-name">神戸 500 お 7890</div><div class="io-item-time">今日 11:02 / 中村 / 走行 200km</div></div><span class="badge b-in">入庫</span></div>
+            <div class="io-item"><div><div class="io-item-name">大阪 700 き 5678</div><div class="io-item-time">昨日 17:45 / 木村 / 走行 88km</div></div><span class="badge b-in">入庫</span></div>
+            <div class="io-item"><div><div class="io-item-name">神戸 800 く 9012</div><div class="io-item-time">昨日 16:20 / 松田 / 走行 145km</div></div><span class="badge b-in">入庫</span></div>
+          </div>
+          <div class="io-col">
+            <div class="io-col-head io-head-out"><i class="ti ti-logout" aria-hidden="true"></i>出庫記録</div>
+            <div class="io-item"><div><div class="io-item-name">神戸 200 い 5678</div><div class="io-item-time">今日 07:45 / 鈴木 / 行先: 大阪</div></div><span class="badge b-out">出庫</span></div>
+            <div class="io-item"><div><div class="io-item-name">神戸 400 え 3456</div><div class="io-item-time">今日 10:30 / 佐藤 / 行先: 神戸</div></div><span class="badge b-out">出庫</span></div>
+            <div class="io-item"><div><div class="io-item-name">姫路 600 か 1234</div><div class="io-item-time">今日 12:00 / 伊藤 / 行先: 姫路</div></div><span class="badge b-out">出庫</span></div>
+            <div class="io-item"><div><div class="io-item-name">大阪 101 こ 7890</div><div class="io-item-time">昨日 08:10 / 高橋 / 行先: 西宮</div></div><span class="badge b-out">出庫</span></div>
+            <div class="io-item"><div><div class="io-item-name">姫路 103 し 5678</div><div class="io-item-time">昨日 09:00 / 渡辺 / 行先: 加古川</div></div><span class="badge b-out">出庫</span></div>
+          </div>
+        </div>
+        <div>
+          <button class="btn btn-primary" onclick="sendPrompt('入出庫記録をCSVでエクスポートしたい')"><i class="ti ti-download" aria-hidden="true"></i>記録をエクスポート ↗</button>
+        </div>
+      </div>
+
+      <!-- 点検管理 -->
+      <div class="page" id="page-inspection">
+        <div class="stats-row">
+          <div class="stat-card"><div class="stat-label">正常</div><div class="stat-val" style="color:#3B6D11">10</div></div>
+          <div class="stat-card"><div class="stat-label">要確認（30日以内）</div><div class="stat-val" style="color:#854F0B">2</div></div>
+          <div class="stat-card"><div class="stat-label">期限超過</div><div class="stat-val" style="color:#A32D2D">1</div></div>
+          <div class="stat-card"><div class="stat-label">整備中</div><div class="stat-val" style="color:#185FA5">2</div></div>
+        </div>
+        <div class="insp-grid">
+          <div class="insp-card" style="border-left:3px solid #E24B4A">
+            <div class="insp-card-top"><span class="insp-card-num">姫路 900 け 3456</span><span class="badge b-ng">超過</span></div>
+            <div class="insp-card-body">
+              <div class="insp-row"><span>車検</span><span style="color:#A32D2D">期限切れ</span></div>
+              <div class="insp-row"><span>オイル交換</span><span>05/01</span></div>
+              <div class="progress-bar-wrap"><div class="progress-bar" style="width:100%;background:#E24B4A"></div></div>
+            </div>
+          </div>
+          <div class="insp-card" style="border-left:3px solid #EF9F27">
+            <div class="insp-card-top"><span class="insp-card-num">大阪 100 あ 1234</span><span class="badge b-warn">6日後</span></div>
+            <div class="insp-card-body">
+              <div class="insp-row"><span>車検</span><span>06/20</span></div>
+              <div class="insp-row"><span>オイル交換</span><span>06/15</span></div>
+              <div class="progress-bar-wrap"><div class="progress-bar" style="width:85%;background:#EF9F27"></div></div>
+            </div>
+          </div>
+          <div class="insp-card" style="border-left:3px solid #EF9F27">
+            <div class="insp-card-top"><span class="insp-card-num">神戸 200 い 5678</span><span class="badge b-warn">11日後</span></div>
+            <div class="insp-card-body">
+              <div class="insp-row"><span>車検</span><span>06/25</span></div>
+              <div class="insp-row"><span>タイヤ交換</span><span>07/01</span></div>
+              <div class="progress-bar-wrap"><div class="progress-bar" style="width:70%;background:#EF9F27"></div></div>
+            </div>
+          </div>
+          <div class="insp-card" style="border-left:3px solid #1D9E75">
+            <div class="insp-card-top"><span class="insp-card-num">姫路 300 う 9012</span><span class="badge b-ok">正常</span></div>
+            <div class="insp-card-body">
+              <div class="insp-row"><span>車検</span><span>07/10</span></div>
+              <div class="insp-row"><span>オイル交換</span><span>07/05</span></div>
+              <div class="progress-bar-wrap"><div class="progress-bar" style="width:40%;background:#1D9E75"></div></div>
+            </div>
+          </div>
+          <div class="insp-card" style="border-left:3px solid #1D9E75">
+            <div class="insp-card-top"><span class="insp-card-num">神戸 400 え 3456</span><span class="badge b-ok">正常</span></div>
+            <div class="insp-card-body">
+              <div class="insp-row"><span>車検</span><span>07/20</span></div>
+              <div class="insp-row"><span>オイル交換</span><span>08/01</span></div>
+              <div class="progress-bar-wrap"><div class="progress-bar" style="width:30%;background:#1D9E75"></div></div>
+            </div>
+          </div>
+          <div class="insp-card" style="border-left:3px solid #1D9E75">
+            <div class="insp-card-top"><span class="insp-card-num">姫路 600 か 1234</span><span class="badge b-ok">正常</span></div>
+            <div class="insp-card-body">
+              <div class="insp-row"><span>車検</span><span>08/05</span></div>
+              <div class="insp-row"><span>タイヤ交換</span><span>09/01</span></div>
+              <div class="progress-bar-wrap"><div class="progress-bar" style="width:20%;background:#1D9E75"></div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- 車両登録モーダル -->
+<div class="modal-overlay" id="modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="vehicle-modal-title">車両を登録</h3>
+      <button class="btn" onclick="closeModal()" aria-label="閉じる"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <div class="form-group"><label>車両番号</label><input id="vehicle-plate" type="text" placeholder="大阪 100 あ 1234"></div>
+        <div class="form-group"><label>車種</label><input id="vehicle-model" type="text" placeholder="トヨタ ハイエース"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>年式</label><input id="vehicle-year" type="text" placeholder="2021年"></div>
+        <div class="form-group"><label>走行距離</label><input id="vehicle-mileage" type="text" placeholder="0 km"></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>次回車検日</label><input id="vehicle-inspection" type="date"></div>
+        <div class="form-group"><label>担当者</label><input id="vehicle-driver" type="text" placeholder="氏名"></div>
+      </div>
+      <div class="form-group">
+        <label>ステータス</label>
+        <select id="vehicle-status">
+          <option>入庫中</option>
+          <option>出庫中</option>
+          <option>整備中</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" id="vehicle-delete-btn" onclick="deleteVehicle()" style="display:none"><i class="ti ti-trash" aria-hidden="true"></i>削除</button>
+      <div class="modal-foot-actions">
+        <button class="btn" onclick="closeModal()">キャンセル</button>
+        <button class="btn btn-primary" id="vehicle-save-btn" onclick="saveVehicle()"><i class="ti ti-check" aria-hidden="true"></i>登録する</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const pages={dash:'ダッシュボード',vehicles:'車両一覧',io:'入出庫管理',inspection:'点検管理'};
+const storageKey='vehicle-management-app:vehicles';
+const ioStorageKey='vehicle-management-app:io-history';
+
+// HTA用のローカルファイル保存
+let fso=null;
+let htaDataFolder=null;
+try{
+  fso=new ActiveXObject('Scripting.FileSystemObject');
+  const appPath=location.href.replace(/\/[^\/]*$/,'');
+  const appDir=appPath.replace(/^file:\/+/,'');
+  htaDataFolder=appDir;
+}catch(e){
+  fso=null;
+}
+
+function getDataFilePath(fileName){
+  if(!fso || !htaDataFolder) return null;
+  return htaDataFolder + '\\' + fileName;
+}
+
+function saveToFile(fileName, jsonData){
+  if(!fso || !htaDataFolder) return false;
+  try{
+    const filePath=getDataFilePath(fileName);
+    const file=fso.CreateTextFile(filePath, true);
+    file.WriteLine(jsonData);
+    file.Close();
+    return true;
+  }catch(e){
+    console.warn('ファイル保存に失敗:', e.message);
+    return false;
+  }
+}
+
+function loadFromFile(fileName){
+  if(!fso || !htaDataFolder) return null;
+  try{
+    const filePath=getDataFilePath(fileName);
+    if(!fso.FileExists(filePath)) return null;
+    const file=fso.OpenTextFile(filePath, 1);
+    const content=file.ReadAll();
+    file.Close();
+    return content;
+  }catch(e){
+    console.warn('ファイル読み込みに失敗:', e.message);
+    return null;
+  }
+}
+
+const defaultVehicleStore=[
+  {plate:'大阪 100 あ 1234',model:'トヨタ ハイエース',year:'2019年',mileage:'82,400 km',status:'入庫中',inspection:'2026-06-20',inspectionLabel:'6日後',inspectionTone:'warn',driver:'田中 運転手',time:'08:32',destination:'大阪'},
+  {plate:'神戸 200 い 5678',model:'日産 キャラバン',year:'2020年',mileage:'61,200 km',status:'出庫中',inspection:'2026-06-25',inspectionLabel:'11日後',inspectionTone:'warn',driver:'鈴木 運転手',time:'07:45',destination:'大阪'},
+  {plate:'姫路 300 う 9012',model:'ホンダ ステップワゴン',year:'2021年',mileage:'43,100 km',status:'入庫中',inspection:'2026-07-10',inspectionLabel:'正常',inspectionTone:'ok',driver:'山本 運転手',time:'09:15',destination:'姫路'},
+  {plate:'神戸 400 え 3456',model:'マツダ ボンゴ',year:'2018年',mileage:'99,800 km',status:'出庫中',inspection:'2026-07-20',inspectionLabel:'正常',inspectionTone:'ok',driver:'佐藤 運転手',time:'10:30',destination:'神戸'},
+  {plate:'姫路 600 か 1234',model:'トヨタ プロボックス',year:'2022年',mileage:'28,500 km',status:'出庫中',inspection:'2026-08-05',inspectionLabel:'正常',inspectionTone:'ok',driver:'伊藤 運転手',time:'12:00',destination:'姫路'},
+  {plate:'大阪 700 き 5678',model:'スズキ エブリイ',year:'2020年',mileage:'55,300 km',status:'入庫中',inspection:'2026-08-12',inspectionLabel:'正常',inspectionTone:'ok',driver:'木村 運転手',time:'17:45',destination:'大阪'},
+  {plate:'神戸 800 く 9012',model:'ダイハツ ハイゼット',year:'2021年',mileage:'39,700 km',status:'入庫中',inspection:'2026-08-20',inspectionLabel:'正常',inspectionTone:'ok',driver:'松田 運転手',time:'16:20',destination:'神戸'},
+  {plate:'姫路 900 け 3456',model:'トヨタ タウンエース',year:'2019年',mileage:'77,600 km',status:'整備中',inspection:'2026-05-01',inspectionLabel:'超過',inspectionTone:'ng',driver:'山口 運転手',time:'15:10',destination:'姫路'},
+  {plate:'大阪 101 こ 7890',model:'日産 NV200',year:'2022年',mileage:'21,400 km',status:'入庫中',inspection:'2026-09-01',inspectionLabel:'正常',inspectionTone:'ok',driver:'高橋 運転手',time:'08:10',destination:'西宮'},
+  {plate:'神戸 102 さ 1234',model:'ホンダ N-VAN',year:'2023年',mileage:'12,900 km',status:'入庫中',inspection:'2026-09-15',inspectionLabel:'正常',inspectionTone:'ok',driver:'中川 運転手',time:'13:10',destination:'神戸'},
+  {plate:'姫路 103 し 5678',model:'スバル サンバー',year:'2020年',mileage:'48,200 km',status:'入庫中',inspection:'2026-09-22',inspectionLabel:'正常',inspectionTone:'ok',driver:'渡辺 運転手',time:'09:00',destination:'加古川'},
+  {plate:'大阪 104 す 9012',model:'マツダ スクラム',year:'2021年',mileage:'33,600 km',status:'入庫中',inspection:'2026-10-01',inspectionLabel:'正常',inspectionTone:'ok',driver:'田村 運転手',time:'14:20',destination:'大阪'},
+  {plate:'神戸 105 せ 3456',model:'トヨタ ライトエース',year:'2018年',mileage:'108,000 km',status:'整備中',inspection:'2026-10-10',inspectionLabel:'正常',inspectionTone:'ok',driver:'林 運転手',time:'11:50',destination:'神戸'},
+  {plate:'姫路 106 そ 7890',model:'日産 クリッパー',year:'2022年',mileage:'19,800 km',status:'入庫中',inspection:'2026-10-20',inspectionLabel:'正常',inspectionTone:'ok',driver:'小林 運転手',time:'18:05',destination:'姫路'}
+];
+const defaultIoHistory=[
+  {plate:'大阪 100 あ 1234',action:'入庫',time:'08:32',operator:'田中 運転手',memo:'走行 120km',date:'2026/06/15'},
+  {plate:'神戸 200 い 5678',action:'出庫',time:'07:45',operator:'鈴木 運転手',memo:'行先: 大阪',date:'2026/06/15'},
+  {plate:'姫路 300 う 9012',action:'入庫',time:'09:15',operator:'山本 運転手',memo:'走行 95km',date:'2026/06/15'},
+  {plate:'神戸 400 え 3456',action:'出庫',time:'10:30',operator:'佐藤 運転手',memo:'行先: 神戸',date:'2026/06/15'},
+  {plate:'姫路 600 か 1234',action:'出庫',time:'12:00',operator:'伊藤 運転手',memo:'行先: 姫路',date:'2026/06/15'}
+];
+function cloneDefaultVehicles(){
+  return defaultVehicleStore.map(vehicle=>({...vehicle}));
+}
+function cloneDefaultIoHistory(){
+  return defaultIoHistory.map(record=>({...record}));
+}
+function normalizeVehicle(vehicle){
+  return {
+    plate:vehicle.plate || '',
+    model:vehicle.model || '',
+    year:vehicle.year || '',
+    mileage:vehicle.mileage || '',
+    status:vehicle.status || '入庫中',
+    inspection:vehicle.inspection || '2026-06-15',
+    inspectionLabel:vehicle.inspectionLabel || '正常',
+    inspectionTone:vehicle.inspectionTone || 'ok',
+    driver:vehicle.driver || '未設定',
+    time:vehicle.time || '09:00',
+    destination:vehicle.destination || '未設定'
+  };
+}
+function loadVehicleStore(){
+  try{
+    // ファイルから読み込み
+    const fileContent=loadFromFile('vehicles.json');
+    if(fileContent){
+      const parsed=JSON.parse(fileContent);
+      return Array.isArray(parsed) ? parsed.map(normalizeVehicle) : cloneDefaultVehicles();
+    }
+    // ファイルがない場合はlocalStorageを試す
+    const raw=localStorage.getItem(storageKey);
+    if(raw){
+      const parsed=JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.map(normalizeVehicle) : cloneDefaultVehicles();
+    }
+  }catch(error){
+    console.warn('loadVehicleStore error:', error);
+  }
+  return cloneDefaultVehicles();
+}
+function normalizeIoRecord(record){
+  return {
+    plate:record.plate || '',
+    action:record.action === '出庫' ? '出庫' : '入庫',
+    time:record.time || '00:00',
+    operator:record.operator || '未設定',
+    memo:record.memo || '',
+    date:record.date || '2026/06/15'
+  };
+}
+function loadIoHistory(){
+  try{
+    // ファイルから読み込み
+    const fileContent=loadFromFile('io_history.json');
+    if(fileContent){
+      const parsed=JSON.parse(fileContent);
+      return Array.isArray(parsed) ? parsed.map(normalizeIoRecord) : cloneDefaultIoHistory();
+    }
+    // ファイルがない場合はlocalStorageを試す
+    const raw=localStorage.getItem(ioStorageKey);
+    if(raw){
+      const parsed=JSON.parse(raw);
+      return Array.isArray(parsed) ? parsed.map(normalizeIoRecord) : cloneDefaultIoHistory();
+    }
+  }catch(error){
+    console.warn('loadIoHistory error:', error);
+  }
+  return cloneDefaultIoHistory();
+}
+function persistVehicleStore(){
+  try{
+    const jsonData=JSON.stringify(vehicleStore);
+    // ファイルに保存
+    if(!saveToFile('vehicles.json', jsonData)){
+      // ファイル保存失敗時はlocalStorageにフォールバック
+      localStorage.setItem(storageKey, jsonData);
+    }
+  }catch(error){
+    console.warn('persistVehicleStore error:', error);
+  }
+}
+function persistIoHistory(){
+  try{
+    const jsonData=JSON.stringify(ioHistory);
+    // ファイルに保存
+    if(!saveToFile('io_history.json', jsonData)){
+      // ファイル保存失敗時はlocalStorageにフォールバック
+      localStorage.setItem(ioStorageKey, jsonData);
+    }
+  }catch(error){
+    console.warn('persistIoHistory error:', error);
+  }
+}
+let vehicleStore=loadVehicleStore();
+let ioHistory=loadIoHistory();
+let modalMode='create';
+let editingPlate='';
+
+function statusBadge(status){
+  if(status==='入庫中') return '<span class="badge b-in">入庫中</span>';
+  if(status==='出庫中') return '<span class="badge b-out">出庫中</span>';
+  return '<span class="badge b-maint">整備中</span>';
+}
+
+function inspectionBadge(vehicle){
+  if(vehicle.inspectionTone==='ng') return '<span class="badge b-ng"><span class="insp-dot dot-ng"></span>超過</span>';
+  if(vehicle.inspectionTone==='warn') return `<span class="badge b-warn"><span class="insp-dot dot-warn"></span>${vehicle.inspectionLabel}</span>`;
+  return '<span class="badge b-ok"><span class="insp-dot dot-ok"></span>正常</span>';
+}
+
+function inspectionColor(vehicle){
+  if(vehicle.inspectionTone==='ng') return '#A32D2D';
+  if(vehicle.inspectionTone==='warn') return '#854F0B';
+  return '#3B6D11';
+}
+
+function escapeHtml(value){
+  return String(value)
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'",'&#39;');
+}
+
+function getVehicle(plate){
+  return vehicleStore.find(vehicle=>vehicle.plate===plate);
+}
+
+function getCurrentDateTime(){
+  const now=new Date();
+  const year=now.getFullYear();
+  const month=String(now.getMonth()+1).padStart(2,'0');
+  const day=String(now.getDate()).padStart(2,'0');
+  const hours=String(now.getHours()).padStart(2,'0');
+  const minutes=String(now.getMinutes()).padStart(2,'0');
+  return {date:`${year}/${month}/${day}`, time:`${hours}:${minutes}`};
+}
+
+function renderDashboard(){
+  const counts={in:0,out:0,maint:0};
+  vehicleStore.forEach(vehicle=>{
+    if(vehicle.status==='入庫中') counts.in+=1;
+    else if(vehicle.status==='出庫中') counts.out+=1;
+    else counts.maint+=1;
+  });
+  const inspectionSummary={normal:0,warn:0,ng:0};
+  vehicleStore.forEach(vehicle=>{
+    if(vehicle.inspectionTone==='ok') inspectionSummary.normal+=1;
+    else if(vehicle.inspectionTone==='warn') inspectionSummary.warn+=1;
+    else inspectionSummary.ng+=1;
+  });
+  const dueVehicles=[...vehicleStore].sort((a,b)=>a.inspection.localeCompare(b.inspection)).slice(0,4);
+  const inVehicles=vehicleStore.filter(vehicle=>vehicle.status==='入庫中').slice(0,3);
+  const outVehicles=vehicleStore.filter(vehicle=>vehicle.status==='出庫中').slice(0,3);
+  const vehicleCards=vehicleStore.map(vehicle=>`<div class="dashboard-vehicle-card">
+      <div class="dashboard-vehicle-top">
+        <div class="dashboard-vehicle-title">
+          <button class="inline-link-btn" data-plate="${escapeHtml(vehicle.plate)}" onclick="openVehicleModal('edit', this.dataset.plate)">${escapeHtml(vehicle.plate)}</button>
+          <div class="dashboard-vehicle-meta">${escapeHtml(vehicle.model)}</div>
+        </div>
+        ${statusBadge(vehicle.status)}
+      </div>
+      <div class="dashboard-vehicle-body">
+        <div><div class="dashboard-vehicle-label">運転手</div><span class="dashboard-vehicle-value">${escapeHtml(vehicle.driver)}</span></div>
+        <div><div class="dashboard-vehicle-label">現在時刻</div><span class="dashboard-vehicle-value">${escapeHtml(vehicle.time)}</span></div>
+        <div><div class="dashboard-vehicle-label">年式</div><span class="dashboard-vehicle-value">${escapeHtml(vehicle.year)}</span></div>
+        <div><div class="dashboard-vehicle-label">走行距離</div><span class="dashboard-vehicle-value">${escapeHtml(vehicle.mileage)}</span></div>
+        <div><div class="dashboard-vehicle-label">次回点検</div><span class="dashboard-vehicle-value">${escapeHtml(vehicle.inspection.replaceAll('-','/').slice(5))}</span></div>
+        <div><div class="dashboard-vehicle-label">入出庫先</div><span class="dashboard-vehicle-value">${escapeHtml(vehicle.destination)}</span></div>
+      </div>
+      <div class="dashboard-vehicle-actions">
+        <button class="btn btn-compact" data-plate="${escapeHtml(vehicle.plate)}" onclick="toggleVehicleStatus(this.dataset.plate)">入⇄出</button>
+        <button class="btn btn-compact" data-plate="${escapeHtml(vehicle.plate)}" onclick="openVehicleModal('edit', this.dataset.plate)">編集</button>
+      </div>
+    </div>`).join('');
+  document.getElementById('page-dash').innerHTML=`
+    <div class="stats-row">
+      <div class="stat-card">
+        <div class="stat-label">総車両数</div>
+        <div class="stat-val">${vehicleStore.length}</div>
+        <div class="stat-sub" style="color:#185FA5">全台登録済み</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">入庫中</div>
+        <div class="stat-val" style="color:#3B6D11">${counts.in}</div>
+        <div class="stat-sub" style="color:#3B6D11">稼働可能</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">出庫中</div>
+        <div class="stat-val" style="color:#854F0B">${counts.out}</div>
+        <div class="stat-sub" style="color:#854F0B">運行中</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">整備中</div>
+        <div class="stat-val" style="color:#A32D2D">${counts.maint}</div>
+        <div class="stat-sub" style="color:#A32D2D">点検・修理</div>
+      </div>
+    </div>
+    <div class="section-head"><span class="section-title">点検期限が近い車両</span></div>
+    <div class="vehicle-table">
+      <table>
+        <colgroup><col style="width:22%"><col style="width:20%"><col style="width:18%"><col style="width:14%"><col style="width:26%"></colgroup>
+        <thead><tr><th>車両番号</th><th>車種</th><th>次回点検日</th><th>残り日数</th><th>操作</th></tr></thead>
+        <tbody>
+          ${dueVehicles.map(vehicle=>`<tr>
+            <td><button class="inline-link-btn" data-plate="${escapeHtml(vehicle.plate)}" onclick="openVehicleModal('edit', this.dataset.plate)">${escapeHtml(vehicle.plate)}</button></td>
+            <td>${escapeHtml(vehicle.model)}</td>
+            <td>${escapeHtml(vehicle.inspection.replaceAll('-','/'))}</td>
+            <td><span style="color:${inspectionColor(vehicle)};font-weight:700">${escapeHtml(vehicle.inspectionLabel)}</span></td>
+            <td>
+              <div class="row-actions">
+                <button class="btn btn-compact" data-plate="${escapeHtml(vehicle.plate)}" onclick="toggleVehicleStatus(this.dataset.plate)">入⇄出</button>
+                <button class="btn btn-compact" data-plate="${escapeHtml(vehicle.plate)}" onclick="openVehicleModal('edit', this.dataset.plate)">編集</button>
+              </div>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+    <div class="section-head"><span class="section-title">本日の入出庫（直近）</span></div>
+    <div class="io-cols">
+      <div class="io-col">
+        <div class="io-col-head io-head-in"><i class="ti ti-login" aria-hidden="true"></i>入庫</div>
+        ${inVehicles.map(vehicle=>`<div class="io-item">
+          <div><button class="inline-link-btn io-item-name" data-plate="${escapeHtml(vehicle.plate)}" onclick="openVehicleModal('edit', this.dataset.plate)">${escapeHtml(vehicle.plate)}</button><div class="io-item-time">${escapeHtml(vehicle.time)} — ${escapeHtml(vehicle.driver)}</div></div>
+          <div class="row-actions">
+            <button class="btn btn-compact" data-plate="${escapeHtml(vehicle.plate)}" onclick="toggleVehicleStatus(this.dataset.plate)">入⇄出</button>
+            <button class="btn btn-compact" data-plate="${escapeHtml(vehicle.plate)}" onclick="openVehicleModal('edit', this.dataset.plate)">編集</button>
+          </div>
+        </div>`).join('')}
+      </div>
+      <div class="io-col">
+        <div class="io-col-head io-head-out"><i class="ti ti-logout" aria-hidden="true"></i>出庫</div>
+        ${outVehicles.map(vehicle=>`<div class="io-item">
+          <div><button class="inline-link-btn io-item-name" data-plate="${escapeHtml(vehicle.plate)}" onclick="openVehicleModal('edit', this.dataset.plate)">${escapeHtml(vehicle.plate)}</button><div class="io-item-time">${escapeHtml(vehicle.time)} — ${escapeHtml(vehicle.driver)}</div></div>
+          <div class="row-actions">
+            <button class="btn btn-compact" data-plate="${escapeHtml(vehicle.plate)}" onclick="toggleVehicleStatus(this.dataset.plate)">入⇄出</button>
+            <button class="btn btn-compact" data-plate="${escapeHtml(vehicle.plate)}" onclick="openVehicleModal('edit', this.dataset.plate)">編集</button>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div class="section-head"><span class="section-title">車両ごとの入出庫状態</span></div>
+    <div class="dashboard-vehicle-grid">
+      ${vehicleCards}
+    </div>
+  `;
+}
+
+function renderVehiclesPage(){
+  document.getElementById('page-vehicles').innerHTML=`
+    <div class="vehicle-table">
+      <table>
+        <colgroup><col style="width:20%"><col style="width:18%"><col style="width:12%"><col style="width:14%"><col style="width:12%"><col style="width:12%"><col style="width:12%"></colgroup>
+        <thead><tr><th>車両番号</th><th>車種</th><th>年式</th><th>走行距離</th><th>状態</th><th>次回点検</th><th>操作</th></tr></thead>
+        <tbody>
+          ${vehicleStore.map(vehicle=>`<tr>
+            <td><button class="inline-link-btn" data-plate="${escapeHtml(vehicle.plate)}" onclick="openVehicleModal('edit', this.dataset.plate)">${escapeHtml(vehicle.plate)}</button></td>
+            <td>${escapeHtml(vehicle.model)}</td>
+            <td>${escapeHtml(vehicle.year)}</td>
+            <td>${escapeHtml(vehicle.mileage)}</td>
+            <td>${statusBadge(vehicle.status)}</td>
+            <td><span style="color:${inspectionColor(vehicle)};font-weight:700">${escapeHtml(vehicle.inspection.replaceAll('-','/').slice(5))}</span></td>
+            <td>
+              <div class="row-actions">
+                <button class="btn btn-compact" data-plate="${escapeHtml(vehicle.plate)}" onclick="toggleVehicleStatus(this.dataset.plate)">入⇄出</button>
+                <button class="btn btn-compact" data-plate="${escapeHtml(vehicle.plate)}" onclick="openVehicleModal('edit', this.dataset.plate)">編集</button>
+              </div>
+            </td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+function renderIoPage(){
+  const incoming=vehicleStore.filter(vehicle=>vehicle.status==='入庫中');
+  const outgoing=vehicleStore.filter(vehicle=>vehicle.status==='出庫中');
+  document.getElementById('page-io').innerHTML=`
+    <div class="io-cols">
+      <div class="io-col">
+        <div class="io-col-head io-head-in"><i class="ti ti-login" aria-hidden="true"></i>入庫記録</div>
+        ${ioHistory.filter(record=>record.action==='入庫').slice(0,5).map(record=>`<div class="io-item">
+          <div><button class="inline-link-btn io-item-name" data-plate="${escapeHtml(record.plate)}" onclick="openVehicleModal('edit', this.dataset.plate)">${escapeHtml(record.plate)}</button><div class="io-item-time">${escapeHtml(record.date)} ${escapeHtml(record.time)} / ${escapeHtml(record.operator)} / ${escapeHtml(record.memo)}</div></div>
+          <div class="row-actions">
+            <button class="btn btn-compact" data-plate="${escapeHtml(record.plate)}" onclick="toggleVehicleStatus(this.dataset.plate)">入⇄出</button>
+            <button class="btn btn-compact" data-plate="${escapeHtml(record.plate)}" onclick="openVehicleModal('edit', this.dataset.plate)">編集</button>
+          </div>
+        </div>`).join('')}
+      </div>
+      <div class="io-col">
+        <div class="io-col-head io-head-out"><i class="ti ti-logout" aria-hidden="true"></i>出庫記録</div>
+        ${ioHistory.filter(record=>record.action==='出庫').slice(0,5).map(record=>`<div class="io-item">
+          <div><button class="inline-link-btn io-item-name" data-plate="${escapeHtml(record.plate)}" onclick="openVehicleModal('edit', this.dataset.plate)">${escapeHtml(record.plate)}</button><div class="io-item-time">${escapeHtml(record.date)} ${escapeHtml(record.time)} / ${escapeHtml(record.operator)} / ${escapeHtml(record.memo)}</div></div>
+          <div class="row-actions">
+            <button class="btn btn-compact" data-plate="${escapeHtml(record.plate)}" onclick="toggleVehicleStatus(this.dataset.plate)">入⇄出</button>
+            <button class="btn btn-compact" data-plate="${escapeHtml(record.plate)}" onclick="openVehicleModal('edit', this.dataset.plate)">編集</button>
+          </div>
+        </div>`).join('')}
+      </div>
+    </div>
+    <div>
+      <button class="btn btn-primary" onclick="sendPrompt('入出庫記録をCSVでエクスポートしたい')"><i class="ti ti-download" aria-hidden="true"></i>記録をエクスポート ↗</button>
+    </div>
+  `;
+}
+
+function renderInspectionPage(){
+  const summary={normal:0,warn:0,ng:0,maint:0};
+  vehicleStore.forEach(vehicle=>{
+    if(vehicle.inspectionTone==='ok') summary.normal+=1;
+    else if(vehicle.inspectionTone==='warn') summary.warn+=1;
+    else summary.ng+=1;
+    if(vehicle.status==='整備中') summary.maint+=1;
+  });
+  document.getElementById('page-inspection').innerHTML=`
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">正常</div><div class="stat-val" style="color:#3B6D11">${summary.normal}</div></div>
+      <div class="stat-card"><div class="stat-label">要確認（30日以内）</div><div class="stat-val" style="color:#854F0B">${summary.warn}</div></div>
+      <div class="stat-card"><div class="stat-label">期限超過</div><div class="stat-val" style="color:#A32D2D">${summary.ng}</div></div>
+      <div class="stat-card"><div class="stat-label">整備中</div><div class="stat-val" style="color:#185FA5">${summary.maint}</div></div>
+    </div>
+    <div class="insp-grid">
+      ${vehicleStore.map(vehicle=>`<div class="insp-card" style="border-left:3px solid ${vehicle.inspectionTone==='ng' ? '#E24B4A' : vehicle.inspectionTone==='warn' ? '#EF9F27' : '#1D9E75'}">
+        <div class="insp-card-top"><button class="inline-link-btn insp-card-num" data-plate="${escapeHtml(vehicle.plate)}" onclick="openVehicleModal('edit', this.dataset.plate)">${escapeHtml(vehicle.plate)}</button>${inspectionBadge(vehicle)}</div>
+        <div class="insp-card-body">
+          <div class="insp-row"><span>車種</span><span>${escapeHtml(vehicle.model)}</span></div>
+          <div class="insp-row"><span>車検</span><span>${escapeHtml(vehicle.inspection.replaceAll('-','/').slice(5))}</span></div>
+          <div class="insp-row"><span>状態</span><span>${statusBadge(vehicle.status)}</span></div>
+          <div class="row-actions" style="margin-top:2px">
+            <button class="btn btn-compact" data-plate="${escapeHtml(vehicle.plate)}" onclick="toggleVehicleStatus(this.dataset.plate)">入⇄出</button>
+            <button class="btn btn-compact" data-plate="${escapeHtml(vehicle.plate)}" onclick="openVehicleModal('edit', this.dataset.plate)">編集</button>
+          </div>
+          <div class="progress-bar-wrap"><div class="progress-bar" style="width:${vehicle.inspectionTone==='ng' ? '100%' : vehicle.inspectionTone==='warn' ? '80%' : '35%'};background:${vehicle.inspectionTone==='ng' ? '#E24B4A' : vehicle.inspectionTone==='warn' ? '#EF9F27' : '#1D9E75'}"></div></div>
+        </div>
+      </div>`).join('')}
+    </div>
+  `;
+}
+
+function renderAll(){
+  renderDashboard();
+  renderVehiclesPage();
+  renderIoPage();
+  renderInspectionPage();
+}
+
+function showPage(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('page-title').textContent=pages[id];
+}
+
+function openVehicleModal(mode='create', plate=''){
+  modalMode=mode;
+  editingPlate=plate;
+  const vehicle=plate ? getVehicle(plate) : null;
+  document.getElementById('vehicle-modal-title').textContent=mode==='edit' ? '車両を編集' : '車両を登録';
+  document.getElementById('vehicle-save-btn').innerHTML=mode==='edit' ? '<i class="ti ti-check" aria-hidden="true"></i>更新する' : '<i class="ti ti-check" aria-hidden="true"></i>登録する';
+  document.getElementById('vehicle-delete-btn').style.display=mode==='edit' ? 'inline-flex' : 'none';
+  document.getElementById('vehicle-plate').value=vehicle ? vehicle.plate : '';
+  document.getElementById('vehicle-model').value=vehicle ? vehicle.model : '';
+  document.getElementById('vehicle-year').value=vehicle ? vehicle.year : '';
+  document.getElementById('vehicle-mileage').value=vehicle ? vehicle.mileage : '0 km';
+  document.getElementById('vehicle-inspection').value=vehicle ? vehicle.inspection : '2026-06-15';
+  document.getElementById('vehicle-driver').value=vehicle ? vehicle.driver.replace(' 運転手','') : '';
+  document.getElementById('vehicle-status').value=vehicle ? vehicle.status : '入庫中';
+  document.getElementById('modal').classList.add('open');
+}
+
+function closeModal(){document.getElementById('modal').classList.remove('open')}
+
+function saveVehicle(){
+  const currentTime=getCurrentDateTime();
+  const nextVehicle={
+    plate:document.getElementById('vehicle-plate').value.trim(),
+    model:document.getElementById('vehicle-model').value.trim(),
+    year:document.getElementById('vehicle-year').value.trim(),
+    mileage:document.getElementById('vehicle-mileage').value.trim(),
+    inspection:document.getElementById('vehicle-inspection').value,
+    driver:document.getElementById('vehicle-driver').value.trim() || '未設定',
+    status:document.getElementById('vehicle-status').value,
+    time:currentTime.time,
+    destination:'未設定',
+    inspectionLabel:'正常',
+    inspectionTone:'ok'
+  };
+  if(!nextVehicle.plate || !nextVehicle.model){
+    alert('車両番号と車種を入力してください。');
+    return;
+  }
+  const duplicateIndex=vehicleStore.findIndex(vehicle=>vehicle.plate===nextVehicle.plate && vehicle.plate!==editingPlate);
+  if(duplicateIndex>=0){
+    alert('同じ車両番号がすでに登録されています。');
+    return;
+  }
+  const existingIndex=vehicleStore.findIndex(vehicle=>vehicle.plate===editingPlate);
+  if(modalMode==='edit' && existingIndex>=0){
+    const current=vehicleStore[existingIndex];
+    vehicleStore[existingIndex]={...current,...nextVehicle};
+    if(current.inspectionTone) vehicleStore[existingIndex].inspectionTone=current.inspectionTone;
+    if(current.inspectionLabel) vehicleStore[existingIndex].inspectionLabel=current.inspectionLabel;
+    if(current.plate!==nextVehicle.plate){
+      ioHistory=ioHistory.map(record=>record.plate===current.plate ? {...record, plate:nextVehicle.plate} : record);
+    }
+    if(current.status!==nextVehicle.status && (nextVehicle.status==='入庫中' || nextVehicle.status==='出庫中')){
+      ioHistory.unshift({
+        plate:nextVehicle.plate,
+        action:nextVehicle.status==='入庫中' ? '入庫' : '出庫',
+        time:currentTime.time,
+        operator:nextVehicle.driver,
+        memo:nextVehicle.status==='入庫中' ? `走行 ${nextVehicle.mileage}` : `行先: ${nextVehicle.destination}`,
+        date:currentTime.date
+      });
+    }
+  } else {
+    vehicleStore.push(nextVehicle);
+  }
+  persistVehicleStore();
+  persistIoHistory();
+  closeModal();
+  renderAll();
+}
+
+function deleteVehicle(){
+  if(modalMode!=='edit' || !editingPlate) return;
+  const vehicle=getVehicle(editingPlate);
+  if(!vehicle) return;
+  const confirmed=confirm(`「${vehicle.plate}」を削除します。よろしいですか？`);
+  if(!confirmed) return;
+  vehicleStore=vehicleStore.filter(item=>item.plate!==editingPlate);
+  ioHistory=ioHistory.filter(record=>record.plate!==editingPlate);
+  persistVehicleStore();
+  persistIoHistory();
+  closeModal();
+  renderAll();
+}
+
+function toggleVehicleStatus(plate){
+  const vehicle=getVehicle(plate);
+  if(!vehicle) return;
+  const currentTime=getCurrentDateTime();
+  if(vehicle.status==='入庫中'){
+    vehicle.status='出庫中';
+    ioHistory.unshift({
+      plate:vehicle.plate,
+      action:'出庫',
+      time:currentTime.time,
+      operator:vehicle.driver,
+      memo:`行先: ${vehicle.destination}`,
+      date:currentTime.date
+    });
+  } else if(vehicle.status==='出庫中'){
+    vehicle.status='入庫中';
+    ioHistory.unshift({
+      plate:vehicle.plate,
+      action:'入庫',
+      time:currentTime.time,
+      operator:vehicle.driver,
+      memo:`走行 ${vehicle.mileage}`,
+      date:currentTime.date
+    });
+  } else {
+    vehicle.status='入庫中';
+    ioHistory.unshift({
+      plate:vehicle.plate,
+      action:'入庫',
+      time:currentTime.time,
+      operator:vehicle.driver,
+      memo:`走行 ${vehicle.mileage}`,
+      date:currentTime.date
+    });
+  }
+  vehicle.time=currentTime.time;
+  persistVehicleStore();
+  persistIoHistory();
+  renderAll();
+}
+
+function sendPrompt(message){
+  alert(message);
+}
+
+function setupPwa(){
+  const head=document.head || document.getElementsByTagName('head')[0] || document.documentElement;
+  if(!document.querySelector('meta[name="theme-color"]')){
+    const meta=document.createElement('meta');
+    meta.name='theme-color';
+    meta.content='#f6f8fb';
+    head.appendChild(meta);
+  }
+  if(!document.querySelector('meta[name="viewport"]')){
+    const meta=document.createElement('meta');
+    meta.name='viewport';
+    meta.content='width=device-width, initial-scale=1, viewport-fit=cover';
+    head.appendChild(meta);
+  }
+  if(!document.querySelector('link[rel="manifest"]')){
+    const link=document.createElement('link');
+    link.rel='manifest';
+    link.href='manifest.json';
+    head.appendChild(link);
+  }
+  if('serviceWorker' in navigator && location.protocol!=='file:'){
+    window.addEventListener('load',()=>{
+      navigator.serviceWorker.register('sw.js').catch(error=>console.warn('service worker registration failed', error));
+    });
+  }
+}
+
+renderAll();
+document.getElementById('modal').addEventListener('click',function(e){if(e.target===this)closeModal()});
+setupPwa();
+
+window.showPage=showPage;
+window.openVehicleModal=openVehicleModal;
+window.closeModal=closeModal;
+window.saveVehicle=saveVehicle;
+window.deleteVehicle=deleteVehicle;
+window.toggleVehicleStatus=toggleVehicleStatus;
+window.sendPrompt=sendPrompt;
+window.setupPwa=setupPwa;
+</script>
+</body>
+</html>
